@@ -44,6 +44,9 @@ namespace UNION {
 
     class SetData;
 
+    template<typename T>
+    class Member;
+
     template<typename DATA>
     class UpNode;
 
@@ -52,48 +55,106 @@ namespace UNION {
 }
 
 /**
+ * Class: Represents member node.
+ * @tparam T Type of the value.
+ */
+template<typename T>
+class UNION::Member {
+public:
+    Member *next;
+    T value;
+
+    /**
+     * Constructor: Creates a node with a value.
+     * @param value - T value.
+     */
+    Member(T value) : next(NULL), value(value) {}
+
+    /**
+     * Copy Constructor: Creates a node from another.
+     * @param member - Another node
+     */
+    Member(const Member<T> &member) : next(member.next), value(member.value) {}
+};
+
+/**
  * Class: Represents the set data.
  */
 class UNION::SetData {
 public:
     size_t set_id;
     size_t size;
-    std::vector<size_t> members;
+    UNION::Member<size_t> *members;
+    UNION::Member<size_t> *last;
 
     /**
      * Constructor: Creates an initial data.
+     * @note Worst-Time Complexity: O(1).
+     * @note Worst-Space Complexity: O(1).
      * @param id - Sets id.
      */
     SetData(size_t id) :
             set_id(id),
-            size(1),
-            members() {
-        if (this->set_id == 0) {
-            return;
-        }
-        this->members.push_back(id);
+            size(1) {
+        this->members = new UNION::Member<size_t>(id);
+        last = this->members;
     }
 
     /**
      * Copy Constructor: Creates set data from another.
+     * @note Worst-Time Complexity: O(n).
+     * @note Worst-Space Complexity: O(n).
      * @param data - Another set data reference.
      */
     SetData(const SetData &data) :
             set_id(data.set_id),
             size(data.size),
-            members(data.members) {}
+            members(NULL) {
+        UNION::Member<size_t> *from_member = data.members;
+        UNION::Member<size_t> *to_member = NULL;
+
+
+        while (from_member) {
+            if (to_member == NULL) {
+                to_member = new UNION::Member<size_t>(from_member->value);
+                this->members = to_member;
+            } else {
+                to_member->next = new UNION::Member<size_t>(from_member->value);
+                to_member = to_member->next;
+            }
+
+            from_member = from_member->next;
+        }
+    }
+
+    /**
+     * Destructor.
+     */
+    ~SetData() {
+        if (this->members == NULL) {
+            return;
+        }
+
+        UNION::Member<size_t> *member = this->members;
+        UNION::Member<size_t> *tmp;
+        while (member) {
+            tmp = member;
+            member = member->next;
+            delete tmp;
+        }
+    }
 
     /**
      * Joins between two SetData
      * @param data - Another set of data.
      */
-    void Join(const SetData &data) {
-        for (auto member: data.members) {
-            this->members.push_back(member);
-        }
-        this->size += data.size;
+    void Join(SetData &data) {
+        this->last->next = data.members;
+        this->last = data.last;
+        data.members = NULL;
     }
 };
+
 
 /**
  * Class: Represents nodes inside the UNION FIND DS.
@@ -169,16 +230,20 @@ public:
         os << "\t\t" << "set_size: " << node.info->size << "," << std::endl;
         os << "\t\t" << "members: [" << node.info->size;
 
-        for (auto it = node.info->members.begin(); it != node.info->members.end(); ++it) {
-            if (it + 1 == node.info->members.end()) {
-                os << *it;
+        UNION::Member<size_t> *member = node.info->members;
+
+        while (member) {
+            if (member->next == NULL) {
+                os << member->value;
                 continue;
             }
-            os << *it << ", ";
+
+            os << member->value << ", ";
+
+            member = member->next;
         }
-
-        os << "\t" << node.id << "]" << std::endl;
-
+        os << node.id << "]" << std::endl;
+        os << "\t" << "}" << std::endl;
     }
 };
 
@@ -475,7 +540,13 @@ public:
     void RemoveSet(size_t set_id) {
         UNION::UpNode<DATA> *set = this->GetSetPointer(set_id);
 
-        std::vector<size_t> members = set->info->members;
+        UNION::Member<size_t> *member_list = set->info->members;
+        std::vector<size_t> members = std::vector<size_t>();
+
+        while (member_list) {
+            members.push_back(member_list->value);
+            member_list = member_list->next;
+        }
 
         for (auto member: members) {
             UNION::UpNode<DATA> *node = this->nodes[member - 1];
@@ -483,6 +554,12 @@ public:
             this->free_ids.push_back(member);
             delete node;
             --this->items_amount;
+        }
+
+        // Removes empty items at the end.
+        while (*(this->nodes.rbegin()) == NULL) {
+            this->nodes.pop_back();
+            this->sets.pop_back();
         }
 
         --this->sets_amount;

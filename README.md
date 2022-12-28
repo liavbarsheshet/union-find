@@ -34,6 +34,21 @@ U_NONE, U_OPTIMIZE, U_SENSITIVE_ORDER, U_BOTH
 } POLICY;
 ```
 
+## UNION::Member
+```c++
+/**
+ * Constructor: Creates a node with a value.
+ * @param value - T value.
+ */
+Member(T value) : {...}
+
+/**
+ * Copy Constructor: Creates a node from another.
+ * @param member - Another node
+ */
+Member(const Member<T> &member){...}
+```
+
 ## UNION::SetData
 
 ```c++

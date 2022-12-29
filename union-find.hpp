@@ -149,6 +149,7 @@ public:
      * @param data - Another set of data.
      */
     void Join(SetData &data) {
+        this->size += data.size;
         this->last->next = data.members;
         this->last = data.last;
         data.members = NULL;
@@ -171,6 +172,11 @@ class UNION::UpNode {
 
 public:
     /**
+     * Constructor: Creates a new empty UpNode (Item)
+     */
+    UpNode() : id(0), parent(NULL), data(NULL), info(NULL) {}
+
+    /**
      * Constructor: Creates a new UpNode (Item)
      * @param id - Item id.
      * @param data - Item data.
@@ -181,7 +187,7 @@ public:
      * Copy Constructor: Creates a UpNode (Item) from another
      * @param nod - Another UpNode.
      */
-    UpNode(const UpNode &nod) : id(nod.id), parent(NULL), data(nod.data), info(new UNION::SetData(nod.info)) {}
+    UpNode(const UpNode &nod) : id(nod.id), parent(NULL), data(nod.data), info(new UNION::SetData(*nod.info)) {}
 
     /**
      * Destructor.
@@ -228,22 +234,25 @@ public:
         os << "Set[" << node.id << "] {" << std::endl;
         os << "\t\t" << "id: " << node.id << "," << std::endl;
         os << "\t\t" << "set_size: " << node.info->size << "," << std::endl;
-        os << "\t\t" << "members: [" << node.info->size;
+        os << "\t\t" << "members: [";
 
         UNION::Member<size_t> *member = node.info->members;
 
         while (member) {
+
             if (member->next == NULL) {
                 os << member->value;
-                continue;
+            } else {
+                os << member->value << ", ";
             }
-
-            os << member->value << ", ";
 
             member = member->next;
         }
-        os << node.id << "]" << std::endl;
+
+        os << "]" << std::endl;
         os << "\t" << "}" << std::endl;
+
+        return os;
     }
 };
 
@@ -262,7 +271,7 @@ class UNION::UnionFind {
     UNION::POLICY policy;
 
     UNION::UpNode<DATA> *GetSetPointer(size_t id) {
-        if (this->nodes.size() >= id || id == 0) {
+        if (this->nodes.size() < id - 1 || id == 0) {
             throw UNION::uf_set_not_exists();
         }
 
@@ -282,7 +291,7 @@ public:
      * @note Worst-Time Complexity: O(1).
      * @note Worst-Space Complexity: O(1).
      */
-    explicit UnionFind(UNION::POLICY policy = U_NONE) :
+    UnionFind(UNION::POLICY policy = U_NONE) :
             sets(),
             nodes(),
             free_ids(),
@@ -336,11 +345,16 @@ public:
     size_t MakeSet(DATA *data = NULL) {
         size_t id;
 
-        id = (this->free_id.size() > 0 ? this->free_ids.pop_back() : this->nodes.size());
+        if (this->free_ids.empty()) {
+            id = this->nodes.size() + 1;
+        } else {
+            id = *(this->free_ids.rbegin());
+            this->free_ids.pop_back();
+        }
 
         auto new_item = new UNION::UpNode<DATA>(id, data);
 
-        if (id == this->nodes.size()) {
+        if (id - 1 == this->nodes.size()) {
             this->nodes.push_back(new_item);
             this->sets.push_back(new_item);
         } else {
@@ -407,7 +421,7 @@ public:
      * @return {UNION::UpNode<DATA>} Return the set node.
      */
     UNION::UpNode<DATA> FindSet(size_t id) {
-        if (this->nodes.size() >= id || id == 0) {
+        if (this->nodes.size() < id || id == 0) {
             throw UNION::uf_set_not_exists();
         }
 
@@ -440,7 +454,7 @@ public:
      * @return {UNION::UpNode<DATA>} Return the item node.
      */
     UNION::UpNode<DATA> GetItem(size_t id) const {
-        if (this->nodes.size() >= id || id == 0) {
+        if (this->nodes.size() < id || id == 0) {
             throw UNION::uf_item_not_exists();
         }
 
@@ -462,13 +476,17 @@ public:
      * @param q - Second set id.
      */
     void Join(size_t p, size_t q) {
+        if (p == q) {
+            return;
+        }
+
         auto p_node = GetSetPointer(p);
         auto q_node = GetSetPointer(q);
 
-        bool p_is_bigger = p_node->info->size > q_node->info.size;
+        bool q_is_bigger = q_node->info->size > p_node->info->size;
 
-        UNION::UpNode<DATA> *x_node = (p_is_bigger ? p_node : q_node);
-        UNION::UpNode<DATA> *y_node = (p_is_bigger ? q_node : p_node);
+        UNION::UpNode<DATA> *x_node = (q_is_bigger ? q_node : p_node);
+        UNION::UpNode<DATA> *y_node = (q_is_bigger ? p_node : q_node);
 
         y_node->parent = x_node;
         x_node->info->Join(*y_node->info);
@@ -575,6 +593,7 @@ public:
         os << "Union Find: {" << std::endl;
 
         for (UNION::UpNode<DATA> *node: uf.sets) {
+            if (node == NULL) continue;
             os << "\t" << *node << std::endl;
         }
 

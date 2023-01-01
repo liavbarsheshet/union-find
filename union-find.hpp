@@ -415,7 +415,8 @@ public:
 
     /**
      * Gets a set with a given item id.
-     * @note Worst-Time Complexity: O(log(n)) or O(log*(n)) [IF POLICY == U_OPTIMIZE || U_BOTH].
+     * @note Worst-Time Complexity: O(n).
+     * @note Amortized-Time with Join O(log(n)) or O(log*(n)) [IF POLICY == U_OPTIMIZE || U_BOTH].
      * @note Worst-Space Complexity: O(|path|).
      * @param id - The id of the item that belongs to a set.
      * @return {UNION::UpNode<DATA>} Return the set node.
